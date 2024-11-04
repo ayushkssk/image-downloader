@@ -26,6 +26,18 @@ class ImageDownloader {
             'https://cors-anywhere.herokuapp.com/'
         ];
 
+        // Add stats container
+        this.statsContainer = document.createElement('div');
+        this.statsContainer.className = 'stats-panel';
+        this.progressSection.insertBefore(this.statsContainer, this.progressBar.parentElement);
+
+        this.stats = {
+            totalLinks: 0,
+            processed: 0,
+            successful: 0,
+            failed: 0
+        };
+
         this.setupEventListeners();
     }
 
@@ -66,36 +78,33 @@ class ImageDownloader {
 
     async processFile() {
         try {
+            const file = this.dataFile.files[0];
+            if (!file) {
+                this.updateStatus('Please select a file first', 'error');
+                return;
+            }
+
             this.resetStats();
             this.progressSection.style.display = 'block';
             this.downloadSection.style.display = 'none';
             this.updateStatus('Reading file...', 'reading');
 
-            const file = this.dataFile.files[0];
-            const fileExtension = file.name.split('.').pop().toLowerCase();
-            let data;
-
-            if (fileExtension === 'csv') {
-                data = await this.readCSVFile(file);
-            } else {
-                data = await this.readExcelFile(file);
-            }
-
+            const data = await this.readFile(file);
             const imageUrls = this.extractImageUrls(data);
-            this.totalImages = imageUrls.length;
-            this.updateStats();
             
-            if (this.totalImages === 0) {
-                throw new Error('No image URLs found in the file');
+            this.stats.totalLinks = imageUrls.length;
+            this.updateStats();
+
+            if (imageUrls.length === 0) {
+                this.updateStatus('No image URLs found in file', 'error');
+                return;
             }
 
-            this.updateStatus(`Found ${this.totalImages} image links`, 'found');
+            this.updateStatus(`Found ${imageUrls.length} image links`, 'success');
             await this.downloadImages(imageUrls);
-            console.log('Processing started');
-            console.log('Found URLs:', imageUrls);
+
         } catch (error) {
-            console.error('Error processing file:', error);
-            this.updateStatus('Error: ' + error.message, 'error');
+            this.updateStatus(error.message, 'error');
         }
     }
 
@@ -158,48 +167,60 @@ class ImageDownloader {
 
     async downloadImages(urls) {
         const zip = new JSZip();
-        let completed = 0;
-        const total = urls.length;
-
-        this.updateStatus(`Downloading ${total} images...`);
+        this.stats.processed = 0;
+        this.stats.successful = 0;
+        this.stats.failed = 0;
+        
+        this.updateStatus(`Downloading ${urls.length} images...`, 'downloading');
 
         for (let i = 0; i < urls.length; i++) {
             try {
-                const url = urls[i];
-                const blob = await this.downloadImageWithFallback(url, i + 1, total);
+                const blob = await this.downloadImageWithFallback(urls[i], i + 1, urls.length);
                 
                 if (blob) {
-                    const filename = `image_${i + 1}${this.getFileExtension(url)}`;
+                    const filename = `image_${i + 1}${this.getFileExtension(urls[i])}`;
                     zip.file(filename, blob);
-                    completed++;
-                    const progress = (completed / total) * 100;
-                    this.updateProgress(progress);
-                    this.updateStatus(`Downloaded ${completed}/${total} images...`);
+                    this.stats.successful++;
+                } else {
+                    this.stats.failed++;
                 }
+                
+                this.stats.processed++;
+                const progress = (this.stats.processed / urls.length) * 100;
+                this.updateProgress(progress);
+                this.updateStats();
+                this.updateStatus(
+                    `Downloading... ${this.stats.processed}/${urls.length} (${this.stats.failed} failed)`, 
+                    'downloading'
+                );
             } catch (error) {
+                this.stats.failed++;
+                this.updateStats();
                 console.error(`Failed to download image ${i + 1}:`, error);
             }
         }
 
         try {
-            this.updateStatus('Creating ZIP file...');
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            this.updateStatus('Creating ZIP file...', 'zipping');
+            const zipBlob = await zip.generateAsync({ 
+                type: 'blob',
+                onUpdate: (metadata) => {
+                    this.updateStatus(`Compressing: ${Math.round(metadata.percent)}%`, 'zipping');
+                }
+            });
+
             const downloadUrl = URL.createObjectURL(zipBlob);
-            
             this.downloadLink.href = downloadUrl;
             this.downloadLink.download = 'images.zip';
             this.downloadSection.style.display = 'block';
+
+            const finalMessage = this.stats.failed > 0 
+                ? `Complete! ${this.stats.successful} images processed, ${this.stats.failed} failed`
+                : `Success! All ${this.stats.successful} images processed`;
             
-            const failedCount = total - completed;
-            const statusMessage = failedCount > 0 
-                ? `Download ready! Successfully downloaded ${completed}/${total} images (${failedCount} failed).`
-                : `Download ready! All ${total} images downloaded successfully!`;
-            
-            this.updateStatus(statusMessage);
-            this.processButton.disabled = false;
+            this.updateStatus(finalMessage, this.stats.failed > 0 ? 'warning' : 'complete');
         } catch (error) {
-            this.updateStatus('Error creating ZIP file: ' + error.message);
-            console.error('ZIP creation error:', error);
+            this.updateStatus('Error creating ZIP file: ' + error.message, 'error');
         }
     }
 
@@ -270,9 +291,10 @@ class ImageDownloader {
         }
     }
 
-    updateStatus(message) {
+    updateStatus(message, type = 'info') {
         console.log(message);
         this.statusElement.textContent = message;
+        this.statusElement.className = `status status-${type}`;
     }
 
     updateProgress(percentage) {
@@ -287,27 +309,35 @@ class ImageDownloader {
     }
 
     resetStats() {
-        this.totalImages = 0;
-        this.processedImages = 0;
+        this.stats = {
+            totalLinks: 0,
+            processed: 0,
+            successful: 0,
+            failed: 0
+        };
         this.updateStats();
         this.updateProgress(0);
     }
 
     updateStats() {
-        this.statsElement.innerHTML = `
+        this.statsContainer.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-item">
-                    <div class="stat-label">Total Images</div>
-                    <div class="stat-value">${this.totalImages}</div>
+                    <div class="stat-label">Total Links</div>
+                    <div class="stat-value">${this.stats.totalLinks}</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Processed</div>
-                    <div class="stat-value">${this.processedImages}</div>
+                    <div class="stat-value">${this.stats.processed}/${this.stats.totalLinks}</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label">Progress</div>
-                    <div class="stat-value">${this.totalImages ? 
-                        Math.round((this.processedImages / this.totalImages) * 100) : 0}%</div>
+                    <div class="stat-label">Success Rate</div>
+                    <div class="stat-value">${this.stats.totalLinks ? 
+                        Math.round((this.stats.successful / this.stats.totalLinks) * 100) : 0}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Failed</div>
+                    <div class="stat-value">${this.stats.failed}</div>
                 </div>
             </div>
         `;
