@@ -1,1 +1,29 @@
- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Downloader - Excel/CSV</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Using CDN links instead of local files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Downloader</h1>
+        <div class="upload-section">
+            <input type="file" id="dataFile" accept=".xlsx, .xls, .csv" />
+            <button id="processButton" disabled>Process File</button>
+        </div>
+        <div class="progress-section" style="display: none;">
+            <progress id="progressBar" value="0" max="100"></progress>
+            <div id="status">Ready to process...</div>
+        </div>
+        <div id="downloadSection" style="display: none;">
+            <a id="downloadLink" class="download-button">Download ZIP</a>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 

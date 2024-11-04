@@ -1,1 +1,222 @@
- 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+}
+
+.card {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    color: #2d3748;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    font-size: 1.8rem;
+}
+
+h1 i {
+    color: #667eea;
+    margin-right: 10px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #718096;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+}
+
+.upload-section {
+    margin-bottom: 2rem;
+}
+
+.file-input-wrapper {
+    margin-bottom: 1rem;
+}
+
+.file-input-wrapper input[type="file"] {
+    display: none;
+}
+
+.file-input-wrapper label {
+    display: block;
+    padding: 1rem;
+    background: #f7fafc;
+    border: 2px dashed #cbd5e0;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.file-input-wrapper label:hover {
+    border-color: #667eea;
+    background: #edf2ff;
+}
+
+.file-input-wrapper label i {
+    font-size: 1.5rem;
+    color: #667eea;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.file-name {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #718096;
+    text-align: center;
+}
+
+button {
+    width: 100%;
+    padding: 1rem;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.3s ease;
+}
+
+button:hover:not(:disabled) {
+    background: #5a67d8;
+}
+
+button:disabled {
+    background: #cbd5e0;
+    cursor: not-allowed;
+}
+
+button i {
+    margin-right: 8px;
+}
+
+.progress-section {
+    margin: 2rem 0;
+}
+
+.progress-wrapper {
+    position: relative;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+progress {
+    width: 100%;
+    height: 8px;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+progress::-webkit-progress-bar {
+    background-color: #f7fafc;
+}
+
+progress::-webkit-progress-value {
+    background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.progress-percentage {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #334155;
+}
+
+.status {
+    text-align: center;
+    color: #4a5568;
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.status.reading {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.status.found {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.status.downloading {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.status.zipping {
+    background: #faf5ff;
+    color: #6b21a8;
+}
+
+.status.complete {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.status.error {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.stats-container {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    text-align: center;
+}
+
+.stat-item {
+    padding: 0.5rem;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #334155;
+} 
