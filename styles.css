@@ -161,12 +161,28 @@ progress::-webkit-progress-value {
 }
 
 .status {
-    text-align: center;
-    color: #4a5568;
-    font-size: 0.9rem;
-    padding: 0.5rem;
-    border-radius: 6px;
-    font-weight: 500;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.status.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.status.warning {
+    background-color: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fed7aa;
+}
+
+.status.success {
+    background-color: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
 }
 
 .status.reading {
@@ -192,11 +208,6 @@ progress::-webkit-progress-value {
 .status.complete {
     background: #f0fdf4;
     color: #166534;
-}
-
-.status.error {
-    background: #fef2f2;
-    color: #991b1b;
 }
 
 .status.ready {

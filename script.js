@@ -18,6 +18,14 @@ class ImageDownloader {
         this.processedImages = 0;
         this.isProcessing = false;
 
+        // List of CORS proxies
+        this.corsProxies = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            'https://proxy.cors.sh/',
+            'https://cors-anywhere.herokuapp.com/'
+        ];
+
         this.setupEventListeners();
     }
 
@@ -82,7 +90,7 @@ class ImageDownloader {
             }
 
             this.updateStatus(`Found ${this.totalImages} image links`, 'found');
-            await this.downloadAndZipImages(imageUrls, file.name.replace(/\.[^/.]+$/, ''));
+            await this.downloadImages(imageUrls);
             console.log('Processing started');
             console.log('Found URLs:', imageUrls);
         } catch (error) {
@@ -148,72 +156,129 @@ class ImageDownloader {
             .filter(url => url && typeof url === 'string');
     }
 
-    async downloadAndZipImages(urls, zipName) {
+    async downloadImages(urls) {
         const zip = new JSZip();
-        this.processedImages = 0;
-        this.updateStats();
+        let completed = 0;
+        const total = urls.length;
+
+        this.updateStatus(`Downloading ${total} images...`);
+
+        for (let i = 0; i < urls.length; i++) {
+            try {
+                const url = urls[i];
+                const blob = await this.downloadImageWithFallback(url, i + 1, total);
+                
+                if (blob) {
+                    const filename = `image_${i + 1}${this.getFileExtension(url)}`;
+                    zip.file(filename, blob);
+                    completed++;
+                    const progress = (completed / total) * 100;
+                    this.updateProgress(progress);
+                    this.updateStatus(`Downloaded ${completed}/${total} images...`);
+                }
+            } catch (error) {
+                console.error(`Failed to download image ${i + 1}:`, error);
+            }
+        }
 
         try {
-            this.updateStatus('Downloading images...', 'downloading');
-            const downloads = urls.map(async (url, index) => {
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    const blob = await response.blob();
-                    const filename = `image_${index + 1}${this.getFileExtension(url)}`;
-                    zip.file(filename, blob);
-                    
-                    this.processedImages++;
-                    this.updateProgress((this.processedImages / this.totalImages) * 100);
-                    this.updateStats();
-                    console.log(`Downloading image ${index + 1}/${urls.length}`);
-                } catch (error) {
-                    console.error(`Error downloading ${url}:`, error);
-                    return null;
-                }
-            });
-
-            await Promise.all(downloads);
-            this.updateStatus('Creating ZIP file...', 'zipping');
-
-            const zipBlob = await zip.generateAsync({ 
-                type: 'blob',
-                onUpdate: (metadata) => {
-                    this.updateStatus('Compressing: ' + metadata.percent.toFixed(1) + '%', 'zipping');
-                }
-            });
-
+            this.updateStatus('Creating ZIP file...');
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
             const downloadUrl = URL.createObjectURL(zipBlob);
+            
             this.downloadLink.href = downloadUrl;
-            this.downloadLink.download = `${zipName}_images.zip`;
+            this.downloadLink.download = 'images.zip';
             this.downloadSection.style.display = 'block';
             
-            const successfulDownloads = this.processedImages;
-            const failedDownloads = this.totalImages - successfulDownloads;
+            const failedCount = total - completed;
+            const statusMessage = failedCount > 0 
+                ? `Download ready! Successfully downloaded ${completed}/${total} images (${failedCount} failed).`
+                : `Download ready! All ${total} images downloaded successfully!`;
             
-            this.updateStatus(
-                `Complete! ${successfulDownloads} images processed${failedDownloads > 0 ? `, ${failedDownloads} failed` : ''}`,
-                'complete'
-            );
+            this.updateStatus(statusMessage);
+            this.processButton.disabled = false;
         } catch (error) {
-            throw new Error('Error creating ZIP file: ' + error.message);
+            this.updateStatus('Error creating ZIP file: ' + error.message);
+            console.error('ZIP creation error:', error);
+        }
+    }
+
+    async downloadImageWithFallback(url, currentIndex, total) {
+        // Try direct download first
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Accept': 'image/*, */*' }
+            });
+            if (response.ok) {
+                console.log(`Direct download successful for image ${currentIndex}/${total}`);
+                return await response.blob();
+            }
+        } catch (error) {
+            console.log(`Direct download failed for image ${currentIndex}, trying proxies...`);
+        }
+
+        // Try all proxies simultaneously
+        const proxyPromises = this.corsProxies.map(async (proxy) => {
+            try {
+                const proxiedUrl = proxy + encodeURIComponent(url);
+                console.log(`Trying proxy: ${proxy} for image ${currentIndex}/${total}`);
+                
+                const response = await fetch(proxiedUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'image/*, */*'
+                    }
+                });
+
+                if (response.ok) {
+                    console.log(`Proxy ${proxy} successful for image ${currentIndex}/${total}`);
+                    return await response.blob();
+                }
+            } catch (error) {
+                console.log(`Proxy ${proxy} failed for image ${currentIndex}/${total}`);
+                return null;
+            }
+        });
+
+        // Wait for first successful response or all failures
+        try {
+            const results = await Promise.race([
+                // Race between successful proxy downloads
+                ...proxyPromises,
+                // Timeout after 30 seconds
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Download timeout')), 30000)
+                )
+            ]);
+
+            return results;
+        } catch (error) {
+            console.error(`All proxies failed for image ${currentIndex}/${total}:`, error);
+            this.updateStatus(`Warning: Failed to download image ${currentIndex}/${total}`);
+            return null;
         }
     }
 
     getFileExtension(url) {
-        const match = url.match(/\.(jpg|jpeg|png|gif)($|\?)/i);
-        return match ? `.${match[1].toLowerCase()}` : '.jpg';
+        try {
+            const pathname = new URL(url).pathname;
+            const match = pathname.match(/\.(jpg|jpeg|png|gif)($|\?)/i);
+            return match ? `.${match[1].toLowerCase()}` : '.jpg';
+        } catch {
+            return '.jpg';
+        }
     }
 
-    updateStatus(message, state = '') {
+    updateStatus(message) {
+        console.log(message);
         this.statusElement.textContent = message;
-        this.statusElement.className = 'status ' + state;
     }
 
     updateProgress(percentage) {
-        const roundedPercentage = Math.round(percentage);
-        this.progressBar.value = roundedPercentage;
-        this.progressPercentage.textContent = `${roundedPercentage}%`;
+        this.progressBar.value = percentage;
+        document.querySelector('.progress-percentage').textContent = 
+            `${Math.round(percentage)}%`;
     }
 
     updateFileName() {
