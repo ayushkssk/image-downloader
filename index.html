@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image Downloader - Excel/CSV</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
@@ -20,7 +18,7 @@
             
             <div class="upload-section">
                 <div class="file-input-wrapper">
-                    <input type="file" id="dataFile" accept=".xlsx, .xls, .csv" />
+                    <input type="file" id="dataFile" accept=".xlsx,.xls,.csv" />
                     <label for="dataFile">
                         <i class="fas fa-file-upload"></i>
                         <span>Choose File</span>
@@ -45,16 +43,140 @@
                     <i class="fas fa-download"></i> Download ZIP
                 </a>
             </div>
-
-            <div class="supported-formats">
-                <p>Supported Formats:</p>
-                <div class="format-icons">
-                    <span><i class="fas fa-file-excel"></i> Excel (.xlsx, .xls)</span>
-                    <span><i class="fas fa-file-csv"></i> CSV</span>
-                </div>
-            </div>
         </div>
     </div>
-    <script src="script.js"></script>
+
+    <script>
+        class ImageDownloader {
+            constructor() {
+                this.dataFile = document.getElementById('dataFile');
+                this.processButton = document.getElementById('processButton');
+                this.progressBar = document.getElementById('progressBar');
+                this.statusElement = document.getElementById('status');
+                this.progressSection = document.querySelector('.progress-section');
+                this.downloadSection = document.getElementById('downloadSection');
+                this.downloadLink = document.getElementById('downloadLink');
+                this.fileName = document.getElementById('fileName');
+                
+                this.dataFile.addEventListener('change', this.handleFileSelect.bind(this));
+                this.processButton.addEventListener('click', this.handleProcess.bind(this));
+            }
+
+            handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.fileName.textContent = file.name;
+                    this.processButton.disabled = false;
+                    this.progressSection.style.display = 'block';
+                    this.updateStatus('File selected. Click Process to begin.');
+                } else {
+                    this.fileName.textContent = 'No file chosen';
+                    this.processButton.disabled = true;
+                }
+            }
+
+            async handleProcess() {
+                try {
+                    const file = this.dataFile.files[0];
+                    if (!file) {
+                        throw new Error('Please select a file first');
+                    }
+
+                    this.processButton.disabled = true;
+                    this.updateStatus('Reading file...');
+                    
+                    const data = await this.readFile(file);
+                    const imageUrls = this.extractImageUrls(data);
+                    
+                    if (imageUrls.length === 0) {
+                        throw new Error('No image URLs found in file');
+                    }
+
+                    await this.downloadImages(imageUrls);
+                } catch (error) {
+                    this.updateStatus(`Error: ${error.message}`, 'error');
+                    this.processButton.disabled = false;
+                }
+            }
+
+            async readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                            resolve(jsonData);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            extractImageUrls(data) {
+                const possibleColumns = ['student_photo', 'photo', 'image', 'image_url', 'photo_url'];
+                const imageColumn = possibleColumns.find(col => data[0] && data[0][col]);
+                
+                if (!imageColumn) {
+                    throw new Error('No image URL column found');
+                }
+
+                return data
+                    .map(row => row[imageColumn])
+                    .filter(url => url && typeof url === 'string');
+            }
+
+            async downloadImages(urls) {
+                const zip = new JSZip();
+                let completed = 0;
+
+                this.updateStatus(`Downloading ${urls.length} images...`);
+
+                for (let i = 0; i < urls.length; i++) {
+                    try {
+                        const response = await fetch(urls[i]);
+                        const blob = await response.blob();
+                        zip.file(`image_${i + 1}.jpg`, blob);
+                        
+                        completed++;
+                        const progress = (completed / urls.length) * 100;
+                        this.updateProgress(progress);
+                    } catch (error) {
+                        console.error(`Failed to download image ${i + 1}:`, error);
+                    }
+                }
+
+                this.updateStatus('Creating ZIP file...');
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const downloadUrl = URL.createObjectURL(zipBlob);
+                
+                this.downloadLink.href = downloadUrl;
+                this.downloadLink.download = 'images.zip';
+                this.downloadSection.style.display = 'block';
+                this.updateStatus('Ready for download!');
+                this.processButton.disabled = false;
+            }
+
+            updateStatus(message) {
+                this.statusElement.textContent = message;
+            }
+
+            updateProgress(percentage) {
+                this.progressBar.value = percentage;
+                document.querySelector('.progress-percentage').textContent = `${Math.round(percentage)}%`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new ImageDownloader();
+        });
+    </script>
 </body>
 </html> 

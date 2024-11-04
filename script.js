@@ -10,22 +10,32 @@ class ImageDownloader {
         this.fileName = document.getElementById('fileName');
         this.progressPercentage = document.querySelector('.progress-percentage');
         
-        this.isProcessing = false;
-        
         this.statsElement = document.createElement('div');
         this.statsElement.className = 'stats-container';
         this.statusElement.parentNode.insertBefore(this.statsElement, this.statusElement.nextSibling);
         
         this.totalImages = 0;
         this.processedImages = 0;
-        
+        this.isProcessing = false;
+
         this.setupEventListeners();
     }
 
     setupEventListeners() {
-        this.dataFile.addEventListener('change', () => {
-            this.processButton.disabled = !this.dataFile.files.length;
-            this.updateFileName();
+        this.dataFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                this.processButton.disabled = false;
+                this.fileName.textContent = file.name;
+                this.updateStatus('File selected. Click Process to begin.', 'ready');
+                this.progressSection.style.display = 'block';
+                this.downloadSection.style.display = 'none';
+                this.resetStats();
+            } else {
+                this.processButton.disabled = true;
+                this.fileName.textContent = 'No file chosen';
+                this.progressSection.style.display = 'none';
+            }
         });
 
         this.processButton.addEventListener('click', async () => {
@@ -34,12 +44,14 @@ class ImageDownloader {
             this.isProcessing = true;
             this.processButton.classList.add('processing');
             this.processButton.innerHTML = '<i class="fas fa-spinner"></i> Processing...';
+            this.processButton.disabled = true;
             
             await this.processFile();
             
             this.isProcessing = false;
             this.processButton.classList.remove('processing');
             this.processButton.innerHTML = '<i class="fas fa-cog"></i> Process File';
+            this.processButton.disabled = false;
         });
     }
 

@@ -82,9 +82,12 @@ h1 i {
 
 .file-name {
     margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #f8fafc;
+    border-radius: 6px;
     font-size: 0.9rem;
-    color: #718096;
-    text-align: center;
+    color: #334155;
+    word-break: break-all;
 }
 
 button {
@@ -114,6 +117,14 @@ button i {
 
 .progress-section {
     margin: 2rem 0;
+    transition: all 0.3s ease;
+    opacity: 0;
+    display: none;
+}
+
+.progress-section.visible {
+    opacity: 1;
+    display: block;
 }
 
 .progress-wrapper {
@@ -186,6 +197,11 @@ progress::-webkit-progress-value {
 .status.error {
     background: #fef2f2;
     color: #991b1b;
+}
+
+.status.ready {
+    background: #f0f9ff;
+    color: #0369a1;
 }
 
 .stats-container {
