@@ -31,6 +31,7 @@ class ImageDownloader {
                 this.progressSection.style.display = 'block';
                 this.downloadSection.style.display = 'none';
                 this.resetStats();
+                console.log('File selected:', file.name);
             } else {
                 this.processButton.disabled = true;
                 this.fileName.textContent = 'No file chosen';
@@ -82,6 +83,8 @@ class ImageDownloader {
 
             this.updateStatus(`Found ${this.totalImages} image links`, 'found');
             await this.downloadAndZipImages(imageUrls, file.name.replace(/\.[^/.]+$/, ''));
+            console.log('Processing started');
+            console.log('Found URLs:', imageUrls);
         } catch (error) {
             console.error('Error processing file:', error);
             this.updateStatus('Error: ' + error.message, 'error');
@@ -163,6 +166,7 @@ class ImageDownloader {
                     this.processedImages++;
                     this.updateProgress((this.processedImages / this.totalImages) * 100);
                     this.updateStats();
+                    console.log(`Downloading image ${index + 1}/${urls.length}`);
                 } catch (error) {
                     console.error(`Error downloading ${url}:`, error);
                     return null;
